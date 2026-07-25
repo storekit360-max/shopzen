@@ -13,7 +13,7 @@ const scheduledSocialPostSchema = new mongoose.Schema({
   scheduleStartAt: Date,
   gapMinutes: { type:Number, min:1 },
   productsPerDay: { type:Number, min:1, max:50 },
-  totalProducts: { type:Number, min:1, max:50 },
+  totalProducts: { type:Number, min:1, max:100 },
   caption: { type:String, required:true, maxlength:5000 },
   captionSource: { type:String, enum:['template','ai','fallback','admin'], default:'template' },
   ctaType: { type:String, enum:['none','shop_now','whatsapp'], default:'none' },
