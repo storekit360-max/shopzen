@@ -247,9 +247,10 @@ router.get('/admin/all', adminAuth, async (req, res) => {
 router.put('/admin/:id/status', adminAuth, async (req, res) => {
   try {
     const { status, note, trackingNumber, deliveryPartner } = req.body;
-    const previousOrder = await Order.findById(req.params.id).select('orderStatus').lean();
+    const previousOrder = await Order.findById(req.params.id).select('orderStatus paymentStatus').lean();
     if (!previousOrder) return res.status(404).json({ message: 'Order not found' });
     const update = { orderStatus: status, updatedAt: Date.now() };
+    if (status === 'delivered' && previousOrder.paymentStatus === 'pending') update.paymentStatus = 'paid';
     if (trackingNumber) update.trackingNumber = trackingNumber;
     if (deliveryPartner) update.deliveryPartner = deliveryPartner;
     if (status === 'delivered') update.deliveredAt = Date.now();
@@ -283,7 +284,9 @@ router.put('/admin/:id/status', adminAuth, async (req, res) => {
     // Email customer
     const notifyStatuses = ['confirmed', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'cancelled'];
     if (order.billing?.email && notifyStatuses.includes(status)) {
-      if (status === 'delivered') {
+    if (status === 'delivered') {
+        // Payment is included in the same update, so the invoice is generated
+        // from the paid order even when delivery is marked manually.
         if (await isEmailEnabled('order_delivered_bill_customer')) {
           // Atomic claim prevents duplicate invoice delivery if two admins save
           // Delivered simultaneously. A failed claim may be retried safely by
