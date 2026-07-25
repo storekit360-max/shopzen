@@ -485,7 +485,10 @@ export default function ProductDetail() {
   const isOnSale = product.isOnSale && product.salePrice;
   const discount = isOnSale ? Math.round(((product.price - product.salePrice) / product.price) * 100) : 0;
   const inWishlist = wishlist.includes(product._id);
-  const publicSpecifications = (product.specifications || []).filter(spec => spec.verified === true);
+  // The admin checkbox verifies a specification for marketing use only.
+  // Product specifications entered by the admin should be visible to customers
+  // whether or not they have been verified for a campaign.
+  const publicSpecifications = (product.specifications || []).filter(spec => spec.key && spec.value);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8" style={{ background: 'var(--body-bg)' }}>
