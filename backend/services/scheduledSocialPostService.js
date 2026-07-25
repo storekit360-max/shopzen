@@ -136,7 +136,7 @@ async function createSchedule({ productIds, platforms, startAt, gapMinutes, prod
   const ids=[...new Set((productIds||[]).map(String))];
   const validPlatforms=['facebook','instagram','tiktok','whatsapp','telegram'];
   const platformList=[...new Set((platforms||[]).filter(p=>validPlatforms.includes(p)))];
-  if (!ids.length || ids.length>50) throw new Error('Select between 1 and 50 products.');
+  if (!ids.length || ids.length>100) throw new Error('Select between 1 and 100 products.');
   if (!platformList.length) throw new Error('Select at least one connected platform.');
   const start=new Date(startAt); if(Number.isNaN(start.getTime())||start<=new Date()) throw new Error('Start date and time must be in the future.');
   const gap=Number(gapMinutes); if(!Number.isFinite(gap)||gap<1||gap>10080) throw new Error('Gap must be between 1 minute and 7 days.');
