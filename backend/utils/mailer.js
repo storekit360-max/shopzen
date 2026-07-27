@@ -1,4 +1,5 @@
 const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 
 // ── Resend client ─────────────────────────────────────────────────────────────
 const getResendClient = () => {
@@ -8,18 +9,39 @@ const getResendClient = () => {
   return new Resend(process.env.RESEND_API_KEY);
 };
 
+const getSmtpTransport = () => {
+  if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    throw new Error('Email provider is not configured. Set RESEND_API_KEY or EMAIL_HOST, EMAIL_USER and EMAIL_PASS.');
+  }
+
+  return nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: Number(process.env.EMAIL_PORT || 587),
+    secure: String(process.env.EMAIL_SECURE || '').toLowerCase() === 'true' || Number(process.env.EMAIL_PORT) === 465,
+    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+  });
+};
+
 // ── Mail configuration check ─────────────────────────────────────────────────
 // Do not send a real test email on startup; that consumes Resend daily quota.
 const verifyMailConfig = () => {
   if (process.env.RESEND_API_KEY) {
     console.log('[MAIL] Resend API key configured');
+  } else if (process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    console.log('[MAIL] SMTP email configuration detected');
   } else {
-    console.warn('[MAIL] RESEND_API_KEY is missing — email sending is disabled');
+    console.warn('[MAIL] Email is not configured — set RESEND_API_KEY or SMTP variables');
   }
 };
 
 // ── From address helper ───────────────────────────────────────────────────────
 const getFromAddress = async (theme) => {
+  // SMTP providers generally require the sender to match the authenticated
+  // mailbox. Do this before the Resend-specific fallback below.
+  if (!process.env.RESEND_API_KEY && process.env.EMAIL_USER) {
+    return process.env.EMAIL_FROM || `${theme?.storeName || 'ShopZen'} <${process.env.EMAIL_USER}>`;
+  }
+
   // Resend requires a VERIFIED domain to send from custom addresses.
   // Gmail/Yahoo/Hotmail addresses are NEVER allowed as senders in Resend.
   // REACT_APP_RESEND_DOMAIN or EMAIL_FROM should only be set once your domain
@@ -44,7 +66,6 @@ const getFromAddress = async (theme) => {
 // ── sendMail ──────────────────────────────────────────────────────────────────
 const sendMail = async ({ to, subject, html, text, attachments }) => {
   try {
-    const resend = getResendClient();
     const theme = await getTheme().catch(() => ({ storeName: 'ShopZen', primary: '#15803d' }));
     const from = await getFromAddress(theme);
 
@@ -53,20 +74,29 @@ const sendMail = async ({ to, subject, html, text, attachments }) => {
       console.log(`[MAIL] Sending via Resend | from:${from} → to:${to}`);
     }
 
-    const { data, error } = await resend.emails.send({
-      from, to, subject, html,
-      ...(text ? { text } : {}),
-      ...(Array.isArray(attachments) && attachments.length ? { attachments } : {}),
-    });
-
-    if (error) {
-      // Resend returns structured errors — surface them clearly
-      const msg = error.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
-      throw new Error(msg);
+    if (process.env.RESEND_API_KEY) {
+      const resend = getResendClient();
+      const { data, error } = await resend.emails.send({
+        from, to, subject, html,
+        ...(text ? { text } : {}),
+        ...(Array.isArray(attachments) && attachments.length ? { attachments } : {}),
+      });
+      if (error) {
+        const msg = error.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
+        throw new Error(msg);
+      }
+      console.log(`[MAIL SENT] To:${to} | ${subject} | id:${data?.id}`);
+      return data;
     }
 
-    console.log(`[MAIL SENT] To:${to} | ${subject} | id:${data?.id}`);
-    return data;
+    const transporter = getSmtpTransport();
+    const info = await transporter.sendMail({
+      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+      to, subject, html, ...(text ? { text } : {}),
+      ...(Array.isArray(attachments) && attachments.length ? { attachments } : {}),
+    });
+    console.log(`[MAIL SENT] To:${to} | ${subject} | id:${info.messageId}`);
+    return { id: info.messageId };
   } catch (e) {
     console.error('[MAIL ERROR]', e.message);
     // In production, log full error for Railway/Render log viewers

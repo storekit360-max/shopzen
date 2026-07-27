@@ -98,12 +98,14 @@ CLOUDINARY_CLOUD_NAME=
 CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
 
-# Email — optional, leave blank if not using:
+# Email — configure Resend or SMTP (required for password reset):
+RESEND_API_KEY=
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_USER=
 EMAIL_PASS=
 EMAIL_FROM=
+EMAIL_SECURE=false
 ```
 
 > ⚠️ Never commit `.env` to Git. It is already listed in `.gitignore`.
