@@ -66,9 +66,10 @@ const ResponsiveStyles = () => (
     .sz-header-inner > .flex.items-center.gap-0 { min-width: 0; }
     .sz-header-inner .btn-primary { white-space: nowrap; flex-shrink: 0; }
 
-    @media (max-width: 639px) {
+    @media (max-width: 767px) {
       .sz-header-inner { gap: 0 !important; }
       .sz-logo-img { max-width: min(230px, calc(100vw - 145px)); }
+      .sz-header-signin { display: none !important; }
     }
 
     /* ── Action icons: tighter on tiny screens ── */
@@ -743,7 +744,7 @@ const Header = ({ settings, campaign }) => {
             ) : (
               <Link
                 to="/login"
-                className="hidden sm:flex btn-primary text-sm py-2 px-4 ml-2 transition-all duration-200"
+                className="sz-header-signin hidden sm:flex btn-primary text-sm py-2 px-4 ml-2 transition-all duration-200"
                 onMouseEnter={e => {
                   e.currentTarget.style.transform = 'perspective(400px) rotateX(-8deg) translateY(-2px)';
                   e.currentTarget.style.boxShadow = '0 8px 20px var(--glow-primary)';
