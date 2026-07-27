@@ -48,7 +48,8 @@ const ResponsiveStyles = () => (
     /* ── Logo image: scales via --logo-size, no max-height cap ── */
     .sz-logo-img {
       height: var(--logo-size, 48px);
-      max-width: min(280px, 55vw);
+      /* Leave enough room for search, cart and the account/menu controls. */
+      max-width: min(280px, calc(100vw - 170px));
       width: auto;
       object-fit: contain;
       display: block;
@@ -60,6 +61,14 @@ const ResponsiveStyles = () => (
       display: block;
       font-size: clamp(13px, 3.8vw, 22px);
       white-space: nowrap;
+    }
+
+    .sz-header-inner > .flex.items-center.gap-0 { min-width: 0; }
+    .sz-header-inner .btn-primary { white-space: nowrap; flex-shrink: 0; }
+
+    @media (max-width: 639px) {
+      .sz-header-inner { gap: 0 !important; }
+      .sz-logo-img { max-width: min(230px, calc(100vw - 145px)); }
     }
 
     /* ── Action icons: tighter on tiny screens ── */

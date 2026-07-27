@@ -338,6 +338,24 @@ a:focus-visible      { outline: 2px solid var(--color-primary); outline-offset: 
 /* ── Fix mobile bottom nav overlap with content ─────────────── */
 .has-mobile-nav { padding-bottom: max(72px, calc(64px + env(safe-area-inset-bottom))) !important; }
 
+/* Business/legal pages may contain plain text entered in the admin textarea.
+   Preserve its line breaks so sections and bullet lists do not become one
+   continuous paragraph. HTML authored in the same field remains supported. */
+.business-page-content {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.75;
+}
+.business-page-content p { margin: 0 0 1rem; }
+.business-page-content h2,
+.business-page-content h3 { margin-top: 1.75rem; margin-bottom: .75rem; }
+.business-page-content ul,
+.business-page-content ol { margin: .75rem 0 1rem; padding-left: 1.5rem; }
+@media (max-width: 480px) {
+  .business-page-card { border-radius: 16px !important; }
+  .business-page-content { font-size: 15px; line-height: 1.7; }
+}
+
 /* ── Trust bar no-wrap fix ──────────────────────────────────── */
 .trust-bar-item { min-width: max-content; }
 

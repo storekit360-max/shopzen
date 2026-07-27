@@ -2,6 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import API from '../../utils/api';
 
+// Admin pages can be entered as either HTML or plain text. Plain text needs
+// explicit breaks because HTML collapses newlines and repeated spaces.
+function renderPageContent(content = '') {
+  const value = String(content);
+  if (/<[a-z][\s\S]*>/i.test(value)) return value;
+  const escaped = value.replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+  return escaped
+    .replace(/\r?\n\r?\n/g, '<br><br>')
+    .replace(/\r?\n/g, '<br>')
+    .replace(/\s+(?=\d+\.\s)/g, '<br><br>')
+    .replace(/\s+(?=•\s)/g, '<br>');
+}
+
 export default function BusinessPage() {
   const { slug } = useParams();
   const [page, setPage] = useState(null);
@@ -31,12 +44,12 @@ export default function BusinessPage() {
         <span>/</span>
         <span className="text-gray-700 font-medium">{page.title}</span>
       </nav>
-      <div className="rounded-2xl border border-gray-100 p-8 sm:p-12" style={{ background: 'var(--card-bg)' }}>
-        <h1 className="text-3xl font-bold text-gray-900 mb-6" style={{ fontFamily: 'var(--font-display)' }}>{page.title}</h1>
+      <div className="business-page-card rounded-2xl border border-gray-100 p-5 sm:p-12" style={{ background: 'var(--card-bg)' }}>
+        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-6" style={{ fontFamily: 'var(--font-display)' }}>{page.title}</h1>
         <div
-          className="prose prose-gray max-w-none"
+          className="business-page-content prose prose-gray max-w-none"
           style={{ fontFamily: 'var(--font-body)' }}
-          dangerouslySetInnerHTML={{ __html: page.content }}
+          dangerouslySetInnerHTML={{ __html: renderPageContent(page.content) }}
         />
         <div className="mt-8 pt-6 border-t border-gray-100 text-xs text-gray-400">
           Last updated: {new Date(page.updatedAt).toLocaleDateString()}
