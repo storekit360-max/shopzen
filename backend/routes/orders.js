@@ -9,7 +9,10 @@ const { DiscountEngine } = require('../services/discountEngine');
 const { Coupon, GiftCard, Notification, Settings, DeliveryService } = require('../models/index');
 const { auth, adminAuth } = require('../middleware/auth');
 const { sendPurchaseEvent } = require('../services/metaCAPI');
-const { sendOrderWhatsAppNotification } = require('../services/whatsappOrderNotify');
+const {
+  sendOrderWhatsAppNotification,
+  sendDeliveredWhatsAppNotification,
+} = require('../services/whatsappOrderNotify');
 const { buildInvoicePdf } = require('../services/invoicePdf');
 const {
   sendMail,
@@ -318,6 +321,14 @@ router.put('/admin/:id/status', adminAuth, async (req, res) => {
           html: await orderStatusUpdateHtml(order, status, note),
         }).catch(err => console.error('[STATUS EMAIL]', err.message));
       }
+    }
+
+    // Notify the configured WhatsApp recipient when delivery is confirmed.
+    // This is deliberately fire-and-forget so a WhatsApp outage never blocks
+    // the admin status update.
+    if (status === 'delivered') {
+      sendDeliveredWhatsAppNotification(order)
+        .catch(err => console.error('[WHATSAPP DELIVERED ALERT]', err.message));
     }
 
     res.json(order);

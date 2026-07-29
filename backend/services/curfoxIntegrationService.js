@@ -3,6 +3,7 @@
 const { DeliveryService } = require('../models/index');
 const curfox = require('./curfoxService');
 const { finalizeDeliveredOrder } = require('./deliveredOrderService');
+const { sendDeliveredWhatsAppNotification } = require('./whatsappOrderNotify');
 
 function normalizePhone(value) {
   let phone = String(value || '').trim().replace(/[\s()]/g, '');
@@ -117,7 +118,11 @@ async function syncOrder(order, updatedBy = 'Curfox Automation') {
   }
   order.courierIntegration = { ...(order.courierIntegration?.toObject?.() || order.courierIntegration || {}), provider:'curfox', externalId:order.trackingNumber, lastSyncedAt:new Date(), externalStatus:latest, trackingEvents:events };
   await order.save();
-  if (mapped === 'delivered') await finalizeDeliveredOrder(order, `Automatically synced from Curfox: ${latest}`);
+  if (mapped === 'delivered') {
+    await finalizeDeliveredOrder(order, `Automatically synced from Curfox: ${latest}`);
+    sendDeliveredWhatsAppNotification(order)
+      .catch(err => console.error('[WHATSAPP DELIVERED ALERT]', err.message));
+  }
   return order;
 }
 

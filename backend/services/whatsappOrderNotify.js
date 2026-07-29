@@ -135,7 +135,13 @@ ${itemLines || 'N/A'}
 View in admin panel for full details.`;
 }
 
-async function sendOrderWhatsAppNotification(order) {
+function buildDeliveredMessage(order) {
+  const shopName = process.env.SHOP_NAME || 'ShopZen';
+  const customerName = `${order.billing?.firstName || ''} ${order.billing?.lastName || ''}`.trim() || 'N/A';
+  return `✅ *Order Delivered — ${shopName}*\n\n*Order:* ${order.orderNumber}\n*Customer:* ${customerName}\n*Total:* Rs. ${Number(order.total || 0).toLocaleString()}\n\nThe order has been delivered successfully.`;
+}
+
+async function sendWhatsAppNotification(order, event = 'new') {
   try {
     if (!isEnabled()) return;
 
@@ -146,7 +152,7 @@ async function sendOrderWhatsAppNotification(order) {
       return;
     }
 
-    const body = buildOrderMessage(order);
+    const body = event === 'delivered' ? buildDeliveredMessage(order) : buildOrderMessage(order);
 
     const res = await fetch(`${GRAPH}/${phoneNumberId}/messages`, {
       method:  'POST',
@@ -198,11 +204,19 @@ async function sendOrderWhatsAppNotification(order) {
       return;
     }
 
-    console.log(`[WhatsApp Order Alert] ✅ Sent to ${adminNumber} for order ${order.orderNumber} — message ID: ${json.messages?.[0]?.id || ''}`);
+    console.log(`[WhatsApp Order Alert] ✅ Sent ${event} alert to ${adminNumber} for order ${order.orderNumber} — message ID: ${json.messages?.[0]?.id || ''}`);
   } catch (err) {
     // Never let a notification failure affect order creation.
     console.error('[WhatsApp Order Alert] Unexpected error:', err.message);
   }
 }
 
-module.exports = { sendOrderWhatsAppNotification };
+async function sendOrderWhatsAppNotification(order) {
+  return sendWhatsAppNotification(order, 'new');
+}
+
+async function sendDeliveredWhatsAppNotification(order) {
+  return sendWhatsAppNotification(order, 'delivered');
+}
+
+module.exports = { sendOrderWhatsAppNotification, sendDeliveredWhatsAppNotification };
