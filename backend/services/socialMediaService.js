@@ -338,6 +338,12 @@ async function testConnection(platform) {
   doc[platform].lastTested     = new Date();
   doc[platform].lastTestStatus  = result.ok ? 'ok' : 'error';
   doc[platform].lastTestMessage = result.message;
+  // A successful live API test proves the current token works. Clear any
+  // reconnect state left behind by an earlier failed scheduler run.
+  if (result.ok) {
+    doc[platform].reconnectNeeded   = false;
+    doc[platform].tokenRefreshError = '';
+  }
   doc.updatedAt = new Date();
   await doc.save();
 

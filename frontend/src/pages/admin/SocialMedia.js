@@ -924,7 +924,10 @@ export default function SocialMediaSettings() {
       if (Object.keys(extraConfig).length) payload.extraConfig = extraConfig;
       await API.post(`/social-media/platform/${pid}/connect`, payload);
       toast.success('Credentials saved — run Test Connection to verify');
-      load();
+      // Token health is loaded from a separate endpoint. Refresh both datasets
+      // after reconnecting, otherwise the old expired/reconnect banner remains
+      // visible even though the backend has stored a new token.
+      await Promise.all([load(), loadTokenStatus()]);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save credentials');
     } finally {
@@ -952,7 +955,7 @@ export default function SocialMediaSettings() {
       const { data } = await API.post(`/social-media/platform/${pid}/test`);
       if (data.ok) toast.success(`✓ ${data.message}`);
       else          toast.error(`✗ ${data.message}`);
-      load();
+      await Promise.all([load(), loadTokenStatus()]);
     } catch (err) {
       toast.error('Test request failed');
     } finally {
