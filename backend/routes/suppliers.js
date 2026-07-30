@@ -2,7 +2,7 @@ const express=require('express');const router=express.Router();
 const {adminAuth}=require('../middleware/auth');const Supplier=require('../models/Supplier');const SupplierProduct=require('../models/SupplierProduct');const SupplierSyncLog=require('../models/SupplierSyncLog');const Product=require('../models/Product');const svc=require('../services/supplierService');
 router.use(adminAuth);
 const get=async(req,res,next)=>{try{const s=await Supplier.findById(req.params.id);if(!s)return res.status(404).json({message:'Supplier not found'});req.supplier=s;next();}catch(e){next(e)}};
-router.get('/',async(req,res)=>res.json(await Supplier.find().sort({createdAt:-1})));
+router.get('/',async(req,res)=>res.json(await Supplier.find({isActive:true}).sort({createdAt:-1})));
 router.post('/',async(req,res)=>{try{res.status(201).json(await svc.createSupplier(req.body));}catch(e){res.status(400).json({message:e.message})}});
 router.get('/:id',get,(req,res)=>res.json(req.supplier));
 router.put('/:id',get,async(req,res)=>{try{const data={...req.body};if(data.websiteUrl){const u=svc.safeUrl(data.websiteUrl);data.websiteUrl=u.href;data.normalizedDomain=u.hostname;}if(data.syncIntervalMinutes!==undefined&&Number(data.syncIntervalMinutes)<5)throw new Error('Sync interval must be at least 5 minutes.');res.json(await Supplier.findByIdAndUpdate(req.params.id,data,{new:true,runValidators:true}));}catch(e){res.status(400).json({message:e.message})}});

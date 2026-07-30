@@ -56,7 +56,8 @@ async function testConnection(supplier) {
 async function discover(supplier) {
   const base=safeUrl(supplier.websiteUrl); const urls=new Set([base.href]);
   for (const path of ['/robots.txt','/sitemap.xml','/sitemap_index.xml','/product-sitemap.xml']) { try { const r=await safeFetch(new URL(path,base).href,{timeout:supplier.requestTimeoutMs,domain:base.hostname,accept:'*/*'}); if(r.ok){ const body=await r.text(); [...body.matchAll(/<loc>\s*([^<]+)\s*<\/loc>/gi)].forEach(m=>{try{const x=safeUrl(m[1],base);if(x.hostname===base.hostname)urls.add(x.href)}catch{}}); } } catch {} }
-  const candidates=[...urls].filter(u=>/product|shop|item|ugreen/i.test(u)).slice(0,100); let count=0;
+  const excluded=/\/(cart|checkout|my-account|account|login|logout|register|wishlist|blog|news|tag|search|privacy|terms|contact|wp-admin|wp-json)(\/|$)/i;
+  const candidates=[...urls].filter(u=>{try{const x=new URL(u);return x.hostname===base.hostname&&!excluded.test(x.pathname)&&!/\.(?:jpg|jpeg|png|gif|webp|css|js|pdf|xml)$/i.test(x.pathname)}catch{return false}}).slice(0,100); let count=0;
   for(const url of candidates){ try {const r=await safeFetch(url,{timeout:supplier.requestTimeoutMs,domain:base.hostname}); if(!r.ok)continue; const p=extract(await r.text(),url); if(!p.productName)continue; await SupplierProduct.findOneAndUpdate({supplier:supplier._id,normalizedUrl:url},{$set:{...p,lastCheckedAt:new Date(),lastSuccessfulCheckAt:new Date(),isActive:true,lastError:''}},{upsert:true,new:true,setDefaultsOnInsert:true});count++;}catch(e){ /* individual pages do not abort discovery */ } }
   await Supplier.findByIdAndUpdate(supplier._id,{discoveredProductCount:await SupplierProduct.countDocuments({supplier:supplier._id,isActive:true}),lastDiscoveryAt:new Date()}); return {discovered:count};
 }
