@@ -11,7 +11,11 @@ export const CartProvider = ({ children }) => {
   });
   const [isOpen, setIsOpen] = useState(false);
 
-  useEffect(() => { localStorage.setItem('cart', JSON.stringify(items)); }, [items]);
+  useEffect(() => {
+    // Storage can be unavailable in private mode or restricted webviews;
+    // never let persistence failure break the in-memory cart.
+    try { window.localStorage.setItem('cart', JSON.stringify(items)); } catch {}
+  }, [items]);
 
   const addItem = (product, quantity = 1) => {
     trackMarketingEvent('added_to_cart', { productId: product._id, metadata: { quantity } });
