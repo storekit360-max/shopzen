@@ -7,6 +7,7 @@ import API from '../../utils/api';
 const NAV = [
   { path:'/admin',              label:'Dashboard',      exact:true, icon:'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
   { path:'/admin/products',     label:'Products',                   icon:'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
+  { path:'/admin/suppliers',    label:'Suppliers',                  icon:'M3 7h18M5 7v10m14-10v10M3 17h18M8 3h8v4H8z' },
   { path:'/admin/orders',       label:'Orders',         badge:'orders',  icon:'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
   { path:'/admin/returns',      label:'Returns',        badge:'returns', icon:'M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6' },
   { path:'/admin/categories',   label:'Categories',                 icon:'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10' },

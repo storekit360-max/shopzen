@@ -211,6 +211,7 @@ app.use('/api/offers',        require('./routes/offers'));
 app.use('/api/ai',            require('./routes/ai'));
 app.use('/api/monitoring',    require('./routes/monitoring'));
 app.use('/api/backup',        require('./routes/backup'));
+app.use('/api/suppliers',     require('./routes/suppliers'));
 
 // ─── Page SSR for crawlers ────────────────────────────────────────────────────
 const { seoRenderMiddleware } = require('./routes/seo');
@@ -263,6 +264,9 @@ async function startServer() {
 
     const { startCurfoxScheduler } = require('./services/curfoxScheduler');
     startCurfoxScheduler();
+
+    const { startSupplierScheduler } = require('./services/supplierScheduler');
+    startSupplierScheduler();
 
     const PORT = process.env.PORT || 5001;
     app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

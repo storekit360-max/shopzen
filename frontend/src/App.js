@@ -37,6 +37,7 @@ const CustomerLayout = lazy(() => import('./pages/customer/CustomerLayout'));
 // bundle, which also speeds up the initial customer page load.
 const Dashboard          = lazy(() => import('./pages/admin/Dashboard'));
 const AdminProducts      = lazy(() => import('./pages/admin/Products'));
+const AdminSuppliers     = lazy(() => import('./pages/admin/Suppliers'));
 const AdminOrders        = lazy(() => import('./pages/admin/Orders'));
 const AdminOrderDetail   = lazy(() => import('./pages/admin/OrderDetail'));
 
@@ -235,6 +236,7 @@ export default function App() {
                     <Route path="/admin" element={<AdminRoute><AdminLayout/></AdminRoute>}>
                       <Route index                   element={<Dashboard/>}/>
                       <Route path="products"         element={<AdminProducts/>}/>
+                      <Route path="suppliers"        element={<AdminSuppliers/>}/>
                       <Route path="orders"           element={<AdminOrders/>}/>
                       <Route path="orders/:id"       element={<AdminOrderDetail/>}/>
                       <Route path="categories"       element={<AdminCategories/>}/>

@@ -68,6 +68,19 @@ const productSchema = new mongoose.Schema({
     sku: String,
     image: String
   }],
+  // Optional supplier inventory configuration. Existing products are unchanged.
+  supplierInventory: {
+    enabled: { type: Boolean, default: false }, supplier: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' },
+    supplierProduct: { type: mongoose.Schema.Types.ObjectId, ref: 'SupplierProduct' }, supplierProductUrl: String,
+    supplierSku: String, supplierMpn: String, supplierGtin: String,
+    mappingStatus: { type: String, enum: ['not_mapped','suggested','approved','rejected','paused'], default: 'not_mapped' },
+    mappingApproved: { type: Boolean, default: false }, matchConfidence: Number, matchMethod: String,
+    supplierAvailability: String, supplierStock: Number, calculatedStoreStock: Number,
+    defaultInStockQuantity: Number, safetyStock: Number, maximumSellableStock: Number,
+    syncStatus: { type: String, enum: ['not_configured','pending','success','out_of_stock','unavailable','stale','failed','identity_mismatch'], default: 'not_configured' },
+    lastCheckedAt: Date, lastSuccessfulSyncAt: Date, lastSyncError: String, consecutiveFailures: { type: Number, default: 0 },
+    pausedReason: String, identityFingerprint: String,
+  },
   tags: [String],
   isFeatured: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true },
