@@ -66,20 +66,16 @@ async function callOpenRouterWithWebSearch(prompt, maxTokens = 1600) {
       max_tokens: maxTokens,
       temperature: 0,
       messages: [{ role: 'user', content: `${prompt}\n\nYou must use the web search tool before answering. Return citations for every factual product specification.` }],
+      // OpenRouter's current server-tool format. Do not send this together
+      // with the legacy `plugins: [{ id: 'web' }]` payload.
       tools: [{
         type: 'openrouter:web_search',
         parameters: {
           engine: 'auto',
           max_results: 5,
-          max_total_results: 10,
           search_context_size: 'medium',
-          excluded_domains: ['reddit.com', 'facebook.com', 'instagram.com', 'tiktok.com'],
         },
       }],
-      // The web server tool is model-controlled. The web plugin is retained
-      // as a compatibility fallback so models that do not issue a tool call
-      // still receive search results and URL citations.
-      plugins: [{ id: 'web', max_results: 5, search_context_size: 'medium' }],
     }),
   });
   if (!response.ok) throw new Error(`OpenRouter web research error ${response.status}: ${await response.text()}`);
@@ -388,8 +384,12 @@ router.post('/description', async (req, res) => {
    GET /api/ai/status
 ══════════════════════════════════════════════════════════════════ */
 router.get('/status', (req, res) => {
-  if (process.env.OPENROUTER_API_KEY) return res.json({ provider: 'openrouter', status: 'ok' });
-  res.status(500).json({ provider: 'none', status: 'error' });
+  Settings.findOne({key:'openrouterApiKey'}).lean()
+    .then(row => {
+      const configured = Boolean(decryptSetting(row?.value) || process.env.OPENROUTER_API_KEY);
+      res.status(configured ? 200 : 500).json({ provider: configured ? 'openrouter' : 'none', status: configured ? 'ok' : 'error' });
+    })
+    .catch(() => res.status(500).json({ provider: 'none', status: 'error' }));
 });
 
 /* ══════════════════════════════════════════════════════════════════
@@ -447,7 +447,8 @@ router.post('/specs', async (req, res) => {
     res.json({ specs, sources: grounded.sources, requiresAdminVerification: true });
   } catch (err) {
     console.error('[AI /specs OpenRouter web verification]', err.message);
-    res.status(500).json({ message: 'OpenRouter specification research failed: ' + err.message });
+    const providerError = String(err.message || 'Unknown research error').slice(0, 500);
+    res.status(/^OpenRouter web research error (400|401|402|403|429)/.test(providerError) ? 502 : 500).json({ message: 'OpenRouter specification research failed: ' + providerError });
   }
 });
 
