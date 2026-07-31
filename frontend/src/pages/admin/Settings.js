@@ -13,6 +13,7 @@ const TABS = [
   { id:'whatsapp', label:'💬 WhatsApp', group:'ops' },
   { id:'payment', label:'💳 Payment', group:'ops' },
   { id:'gateways', label:'🔌 Gateways', group:'ops' },
+  { id:'installments', label:'🧾 Installments', group:'ops' },
   { id:'appearance', label:'🎨 Theme', group:'design' },
   { id:'fonts', label:'🔤 Fonts', group:'design' },
   { id:'pages', label:'📄 Pages', group:'design' },
@@ -22,6 +23,7 @@ const TABS = [
   { id:'discounts', label:'🏷️ Discounts', group:'marketing' },
   { id:'features', label:'⚙️ Features', group:'advanced' },
   { id:'advanced', label:'🔧 Advanced', group:'advanced' },
+  { id:'ai', label:'🤖 AI', group:'advanced' },
   { id:'admins', label:'👑 Admins', group:'advanced' },
   { id:'emails', label:'📧 Email Notifications', group:'advanced' },
 ];
@@ -38,6 +40,8 @@ const GATEWAY_PRESETS = {
   payhere: { name: 'PayHere', logo: '💳', color: '#0066cc', fields: [{ key:'merchantId', label:'Merchant ID', type:'text' }, { key:'merchantSecret', label:'Merchant Secret', type:'password' }, { key:'appId', label:'App ID (optional)', type:'text' }, { key:'appSecret', label:'App Secret (optional)', type:'password' }] },
   stripe: { name: 'Stripe', logo: '💜', color: '#635bff', fields: [{ key:'publicKey', label:'Publishable Key', type:'text', hint:'pk_test_... or pk_live_...' }, { key:'secretKey', label:'Secret Key', type:'password', hint:'sk_test_... or sk_live_...' }, { key:'webhookSecret', label:'Webhook Secret', type:'password' }] },
   paypal: { name: 'PayPal', logo: '🅿️', color: '#003087', fields: [{ key:'clientId', label:'Client ID', type:'text' }, { key:'clientSecret', label:'Client Secret', type:'password' }] },
+  payzy: { name: 'Payzy', logo: '🟣', color: '#6d28d9', fields: [{ key:'shopId', label:'Shop ID', type:'text' }, { key:'secretKey', label:'Secret API Key', type:'password' }, { key:'companyName', label:'Company Name', type:'text' }, { key:'logoUrl', label:'Payzy Logo URL', type:'url', hint:'Public HTTPS URL for the official Payzy logo' }] },
+  koko: { name: 'Koko', logo: '🟦', color: '#2563eb', fields: [{ key:'merchantId', label:'Merchant ID', type:'text' }, { key:'secretKey', label:'Secret Key', type:'password' }] },
 };
 
 
@@ -158,6 +162,7 @@ export default function AdminSettings() {
   const [curfoxTesting, setCurfoxTesting] = useState(false);
   const [curfoxBusinesses, setCurfoxBusinesses] = useState([]);
   const [gwConfigs, setGwConfigs] = useState({});
+  const [installmentPlans, setInstallmentPlans] = useState([]);
   const [whatsappConfig, setWhatsappConfig] = useState({
     whatsappEnabled: false,
     whatsappNumber: '',
@@ -172,6 +177,8 @@ export default function AdminSettings() {
     whatsappShowOnDesktop: true,
   });
   const [savingWA, setSavingWA] = useState(false);
+  const [openRouterKey, setOpenRouterKey] = useState('');
+  const [openRouterConfigured, setOpenRouterConfigured] = useState(false);
 
   useEffect(() => {
     API.get('/settings').then(r => {
@@ -187,10 +194,11 @@ export default function AdminSettings() {
       });
       setSettings(p => ({ ...p, ...coerced }));
     }).catch(() => {});
-    API.get('/payments/admin/all').then(r => { setGateways(r.data); const cfgs = {}; r.data.forEach(g => { cfgs[g.gateway] = { ...g.config, isEnabled: g.isEnabled, isLive: g.isLive, displayName: g.displayName }; }); setGwConfigs(cfgs); }).catch(() => {});
+    API.get('/payments/admin/all').then(r => { setGateways(r.data); const cfgs = {}; r.data.forEach(g => { cfgs[g.gateway] = { ...g.config, isEnabled: g.isEnabled, isLive: g.isLive, displayName: g.displayName }; }); setGwConfigs(cfgs); setInstallmentPlans(r.data.find(g => g.gateway === 'payzy')?.config?.installmentPlans || []); }).catch(() => {});
     API.get('/delivery/admin/all').then(r => setDeliveryServices(r.data)).catch(() => {});
     API.get('/whatsapp/config').then(r => setWhatsappConfig(p => ({ ...p, ...r.data }))).catch(() => {});
     API.get('/pages/admin/all').then(r => setPages(r.data)).catch(() => {});
+    API.get('/settings/admin/openrouter-key').then(r => setOpenRouterConfigured(!!r.data?.configured)).catch(() => {});
   }, []);
 
   const save = async () => {
@@ -243,6 +251,10 @@ export default function AdminSettings() {
       console.error('Save gateway error:', err);
       toast.error(err?.response?.data?.message || 'Failed to save gateway');
     }
+  };
+
+  const saveOpenRouterKey = async () => {
+    try { const r=await API.put('/settings/admin/openrouter-key',{apiKey:openRouterKey}); setOpenRouterConfigured(!!r.data?.configured); setOpenRouterKey(''); toast.success('OpenRouter API key saved securely'); } catch(e) { toast.error(e.response?.data?.message||'Failed to save OpenRouter key'); }
   };
 
   const toggleGateway = async (gateway) => {
@@ -922,6 +934,17 @@ export default function AdminSettings() {
                   <p className="text-xs text-blue-600">Razorpay, 2Checkout, HNB iPay, Sampath Vishwa integrations available on request.</p>
                 </div>
               </div>
+            )}
+
+            {tab === 'installments' && (
+              <div><h3 className="font-semibold text-gray-900 mb-1">Installment Plans</h3><p className="text-sm text-gray-400 mb-5">Configure the Payzy plans displayed on product cards and checkout. Interest is informational and included in the customer estimate.</p>
+                <div className="space-y-3">{installmentPlans.map((plan,i)=><div key={i} className="grid sm:grid-cols-5 gap-3 items-end border rounded-xl p-3"><div><label className="form-label">Provider</label><select className="form-input" value={plan.provider||'payzy'} onChange={e=>setInstallmentPlans(p=>p.map((x,j)=>j===i?{...x,provider:e.target.value}:x))}><option value="payzy">Payzy</option><option value="koko">Koko</option></select></div><F label="Plan name" value={plan.name} onChange={e=>setInstallmentPlans(p=>p.map((x,j)=>j===i?{...x,name:e.target.value}:x))}/><F label="Months" type="number" value={plan.months} onChange={e=>setInstallmentPlans(p=>p.map((x,j)=>j===i?{...x,months:Number(e.target.value)}:x))}/><F label="Interest %" type="number" value={plan.interestRate} onChange={e=>setInstallmentPlans(p=>p.map((x,j)=>j===i?{...x,interestRate:Number(e.target.value)}:x))}/><button className="text-sm text-red-600 py-2" onClick={()=>setInstallmentPlans(p=>p.filter((_,j)=>j!==i))}>Remove</button></div>)}</div>
+                <div className="flex gap-2 mt-4"><button className="btn-outline text-sm" onClick={()=>setInstallmentPlans(p=>[...p,{name:`${p.length+1} months`,provider:'payzy',months:3,interestRate:0,active:true}])}>Add Plan</button><button className="btn-primary text-sm" onClick={async()=>{try{const cfg=gwConfigs.payzy||{};await API.put('/payments/admin/payzy',{isEnabled:cfg.isEnabled||false,isLive:cfg.isLive||false,displayName:'Payzy',config:{...cfg,installmentPlans}});toast.success('Installment plans saved');}catch(e){toast.error(e.response?.data?.message||'Could not save plans')}}}>Save Plans</button></div>
+              </div>
+            )}
+
+            {tab === 'ai' && (
+              <div><h3 className="font-semibold text-gray-900 mb-1">AI Configuration</h3><p className="text-sm text-gray-400 mb-5">Configure the OpenRouter key used by AI product, SEO, and marketing tools. It is encrypted before storage and never shown again.</p><div className="max-w-xl bg-white border border-gray-100 rounded-2xl p-5"><F label="OpenRouter API Key" type="password" value={openRouterKey} onChange={e=>setOpenRouterKey(e.target.value)} placeholder={openRouterConfigured ? 'Key saved — enter a new key to replace it' : 'sk-or-v1-...'} hint={openRouterConfigured ? 'A key is currently configured. Leave blank to keep it unchanged.' : 'Create a key at openrouter.ai and paste it here.'}/><div className="flex items-center justify-between mt-4"><span className={`text-xs font-semibold ${openRouterConfigured?'text-green-600':'text-gray-500'}`}>{openRouterConfigured?'✓ Key configured':'No key configured'}</span><button onClick={saveOpenRouterKey} disabled={!openRouterKey.trim()} className="btn-primary text-sm disabled:opacity-50">Save OpenRouter Key</button></div></div></div>
             )}
 
             {/* ── APPEARANCE ── */}

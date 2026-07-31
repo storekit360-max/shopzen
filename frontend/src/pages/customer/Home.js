@@ -14,6 +14,7 @@ import {
 import toast from 'react-hot-toast';
 import DealsSection from '../../components/DealsSection';
 import TestimonialsSection from '../../components/TestimonialsSection';
+import InstallmentPlans from '../../components/InstallmentPlans';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -175,6 +176,7 @@ const ProductCard = ({ product, settings }) => {
             </button>
           )}
         </div>
+        <InstallmentPlans amount={price} />
       </div>
     </article>
   );

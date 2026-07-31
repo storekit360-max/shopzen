@@ -17,6 +17,7 @@ import API from '../../utils/api';
 import { useCart } from '../../context/CartContext';
 import { useTheme } from '../../context/ThemeContext';
 import useSEO from '../../hooks/useSEO';
+import InstallmentPlans from '../../components/InstallmentPlans';
 
 // ── Live catalogue ItemList schema injection ─────────────────────────────────
 function injectBrandSchemas(brandName, slug, products, siteUrl) {
@@ -335,6 +336,7 @@ export default function BrandPage() {
                       <div>
                         <span className="font-bold text-gray-900" style={{ fontFamily: 'var(--font-display)' }}>
                           {sym}{price?.toLocaleString()}
+                          <InstallmentPlans amount={price} />
                         </span>
                         {hasDiscount && (
                           <span className="text-xs text-gray-400 line-through ml-1">

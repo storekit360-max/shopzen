@@ -6,6 +6,7 @@ const Order = require('../models/Order');
 const User = require('../models/User');
 const { sendMail } = require('../utils/mailer');
 const { CustomerBehaviorEvent, CustomerMarketingPreference, ProductInterestScore, MarketingRecommendation, MarketingSettings, MarketingAuditLog } = require('../models/Marketing');
+const { Settings } = require('../models/index');
 
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const clean = (v, max = 5000) => String(v == null ? '' : v).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
@@ -89,7 +90,8 @@ async function generateContent(product, signals, settings) {
   const fallback = fallbackContent(product, signals);
   if (!settings.aiEnabled || process.env.MARKETING_AI_ENABLED !== 'true') return { ...safeContent(fallback, product), source: 'fallback' };
   const provider = process.env.MARKETING_AI_PROVIDER || 'openrouter';
-  const apiKey = process.env.MARKETING_AI_API_KEY || process.env.OPENROUTER_API_KEY;
+  const keyRow = await Settings.findOne({ key: 'openrouterApiKey' }).lean();
+  const apiKey = process.env.MARKETING_AI_API_KEY || decryptOpenRouterKey(keyRow?.value) || process.env.OPENROUTER_API_KEY;
   if (!apiKey || provider !== 'openrouter') return { ...safeContent(fallback, product), source: 'fallback' };
   const prompt = {
     product: { name: clean(product.name,150), brand: clean(product.brand,80), category: clean(product.category?.name,100), price: effectivePrice(product), inStock: Number(product.stock)>0 },
@@ -106,6 +108,8 @@ async function generateContent(product, signals, settings) {
     return { ...safeContent(fallback,product), source:'fallback' };
   }
 }
+
+function decryptOpenRouterKey(value) { try { const [iv,tag,body]=String(value||'').split(':'); const key=crypto.createHash('sha256').update(process.env.SOCIAL_MEDIA_SECRET||process.env.JWT_SECRET||'shopzen-settings-secret').digest(); const d=crypto.createDecipheriv('aes-256-gcm',key,Buffer.from(iv,'hex')); d.setAuthTag(Buffer.from(tag,'hex')); return d.update(Buffer.from(body,'hex'))+d.final('utf8'); } catch { return ''; } }
 
 function signToken(payload, expiresInDays = 30) {
   const secret = process.env.MARKETING_SIGNING_SECRET;

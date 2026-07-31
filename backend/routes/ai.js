@@ -11,6 +11,7 @@
 const express = require('express');
 const router  = express.Router();
 const { adminAuth } = require('../middleware/auth');
+const { Settings } = require('../models/index');
 
 router.use(adminAuth);
 
@@ -19,11 +20,14 @@ router.use(adminAuth);
 ══════════════════════════════════════════════════════════════════ */
 
 async function callOpenRouter(systemMsg, userMsg, maxTokens = 1000) {
+  const row=await Settings.findOne({key:'openrouterApiKey'}).lean();
+  const apiKey=decryptSetting(row?.value)||process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error('No OpenRouter API key configured. Add it in Admin Settings.');
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type':  'application/json',
-      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'Authorization': `Bearer ${apiKey}`,
       'HTTP-Referer':  process.env.FRONTEND_URL || 'https://shopzen.lk',
       'X-Title':       'ShopZen',
     },
@@ -41,6 +45,8 @@ async function callOpenRouter(systemMsg, userMsg, maxTokens = 1000) {
   const data = await res.json();
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
+
+function decryptSetting(value){try{const crypto=require('crypto');const [iv,tag,body]=String(value||'').split(':');const key=crypto.createHash('sha256').update(process.env.SOCIAL_MEDIA_SECRET||process.env.JWT_SECRET||'shopzen-settings-secret').digest();const d=crypto.createDecipheriv('aes-256-gcm',key,Buffer.from(iv,'hex'));d.setAuthTag(Buffer.from(tag,'hex'));return d.update(Buffer.from(body,'hex'))+d.final('utf8')}catch{return ''}}
 
 async function callOpenRouterWithWebSearch(prompt, maxTokens = 1600) {
   if (!process.env.OPENROUTER_API_KEY) {

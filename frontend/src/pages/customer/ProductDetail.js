@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import useSEO, { trackAddToCart, trackViewItem } from '../../hooks/useSEO';
 import { trackMarketingEvent } from '../../utils/marketingTracking';
 import { WhatsAppProductInquiry } from '../../components/WhatsAppWidget';
+import InstallmentPlans from '../../components/InstallmentPlans';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -580,6 +581,7 @@ export default function ProductDetail() {
               </>
             )}
           </div>
+          <InstallmentPlans amount={curPrice} />
           {getPriceModifier() !== 0 && (
             <p className="text-xs text-gray-400">Base {sym} {basePrice?.toLocaleString()} + {sym} {getPriceModifier()} variant</p>
           )}

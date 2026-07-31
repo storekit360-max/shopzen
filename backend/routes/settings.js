@@ -7,6 +7,10 @@ const https = require('https');
 const http = require('http');
 const crypto = require('crypto');
 
+const SETTINGS_SECRET = () => crypto.createHash('sha256').update(process.env.SOCIAL_MEDIA_SECRET || process.env.JWT_SECRET || 'shopzen-settings-secret').digest();
+const encryptPrivateSetting = value => { if (!value) return ''; const iv=crypto.randomBytes(12); const c=crypto.createCipheriv('aes-256-gcm',SETTINGS_SECRET(),iv); const body=Buffer.concat([c.update(String(value),'utf8'),c.final()]); return `${iv.toString('hex')}:${c.getAuthTag().toString('hex')}:${body.toString('hex')}`; };
+const decryptPrivateSetting = value => { try { const [iv,tag,body]=String(value||'').split(':'); const d=crypto.createDecipheriv('aes-256-gcm',SETTINGS_SECRET(),Buffer.from(iv,'hex')); d.setAuthTag(Buffer.from(tag,'hex')); return d.update(Buffer.from(body,'hex'))+d.final('utf8'); } catch { return ''; } };
+
 // ── Helper: proxy an image URL to the response ────────────────────────────────
 function proxyImage(imageUrl, res, fallbackContentType = 'image/png') {
   try {
@@ -262,6 +266,19 @@ router.put('/', adminAuth, async (req, res) => {
     console.error('Settings save error:', err);
     res.status(500).json({ message: err.message || 'Failed to save settings' });
   }
+});
+
+// Private AI credential endpoints. The secret is encrypted at rest and is
+// never returned to the browser; only whether a key exists is exposed.
+router.get('/admin/openrouter-key', adminAuth, async (req,res) => {
+  const row=await Settings.findOne({key:'openrouterApiKey'}).lean();
+  res.json({configured:!!decryptPrivateSetting(row?.value)});
+});
+router.put('/admin/openrouter-key', adminAuth, async (req,res) => {
+  const key=String(req.body?.apiKey||'').trim();
+  if (key && !/^sk-or-v1-[A-Za-z0-9_-]+$/.test(key)) return res.status(400).json({message:'Enter a valid OpenRouter API key.'});
+  await Settings.findOneAndUpdate({key:'openrouterApiKey'},{$set:{key:'openrouterApiKey',value:encryptPrivateSetting(key),group:'private',updatedAt:new Date()}},{upsert:true});
+  res.json({success:true,configured:!!key});
 });
 
 module.exports = router;

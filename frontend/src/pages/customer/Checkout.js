@@ -560,7 +560,7 @@ export default function Checkout() {
 
   // Load payment gateways and delivery services
   useEffect(() => {
-    API.get('/payments/gateways').then(r => setGateways(r.data || [])).catch(() => {});
+    API.get('/payments/gateways', { cache: false }).then(r => setGateways(r.data || [])).catch(() => {});
     API.get('/delivery').then(r => {
       const svcs = r.data?.services || r.data || [];
       setDeliveryServices(svcs);
@@ -833,7 +833,7 @@ export default function Checkout() {
         return;
       }
 
-      // ── COD / bank_transfer / free — create order now ────────────────────────
+      // ── COD / bank_transfer / Payzy / free — create order now ───────────────
       const _purchaseEventId = generateEventId('Purchase', Date.now());
       const { fbp: _fbp, fbc: _fbc } = getFbCookies();
       const { data } = await API.post('/orders', {
@@ -842,6 +842,18 @@ export default function Checkout() {
         fbp: _fbp,
         fbc: _fbc,
       });
+
+      if (effectivePaymentMethod === 'payzy') {
+        try {
+          const payzy = await API.post('/payments/payzy/init', { orderId: data.orderId });
+          if (!payzy.data?.url) throw new Error('Payzy returned no checkout URL');
+          window.location.href = payzy.data.url;
+        } catch (payzyError) {
+          await API.post('/payments/payzy/abort', { orderId: data.orderId }).catch(() => {});
+          throw payzyError;
+        }
+        return;
+      }
 
       if (user) {
         API.put('/auth/profile', {
@@ -1454,7 +1466,7 @@ export default function Checkout() {
                   {gateways.map(gw => (
                     <div key={gw.gateway} className={`pay-method-card ${paymentMethod === gw.gateway ? 'selected' : ''}`} onClick={() => setPaymentMethod(gw.gateway)}>
                       <div className="pay-method-radio" />
-                      <div className="pay-method-icon">{gw.logo ? <img src={gw.logo} alt={gw.displayName} style={{ height: 24, objectFit: 'contain' }} /> : '🔌'}</div>
+                      <div className="pay-method-icon">{gw.providerLogo?.startsWith?.('http') ? <img src={gw.providerLogo} alt={gw.displayName} style={{ height: 24, objectFit: 'contain' }} /> : (gw.gateway === 'payzy' ? '🟣' : gw.gateway === 'koko' ? '🔵' : '🔌')}</div>
                       <div>
                         <div className="pay-method-label flex items-center gap-2">
                           {gw.displayName}
@@ -1464,7 +1476,9 @@ export default function Checkout() {
                           {gw.gateway === 'payhere' && 'Redirected to PayHere secure checkout'}
                           {gw.gateway === 'stripe'  && 'Enter your card details securely via Stripe'}
                           {gw.gateway === 'paypal'  && 'Complete payment via PayPal'}
+                          {gw.gateway === 'payzy'   && 'Pay securely with Payzy installments'}
                         </div>
+                        {gw.gateway === 'payzy' && (gw.installmentPlans || []).length > 0 && <div className="text-xs text-gray-500 mt-1">{gw.installmentPlans.slice(0, 3).map((p, i) => <span key={i} className="mr-3">{p.months} × {(total * (1 + Number(p.interestRate || 0) / 100) / Number(p.months || 1)).toFixed(2)} {(p.provider || 'payzy').toUpperCase()}</span>)}</div>}
                       </div>
                     </div>
                   ))}
@@ -1499,12 +1513,12 @@ export default function Checkout() {
                 {loading ? (
                   <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Placing Order...</>
                 ) : user ? (
-                  <>Place Order — {sym} {total.toLocaleString()}{['payhere', 'stripe', 'paypal'].includes(paymentMethod) ? ' →' : ''}</>
+                <>Place Order — {sym} {total.toLocaleString()}{['payhere', 'stripe', 'paypal', 'payzy'].includes(paymentMethod) ? ' →' : ''}</>
                 ) : (
                   <>Create Account &amp; Place Order — {sym} {total.toLocaleString()}</>
                 )}
               </button>
-              {total > 0 && ['payhere', 'stripe', 'paypal'].includes(paymentMethod) && (
+              {total > 0 && ['payhere', 'stripe', 'paypal', 'payzy'].includes(paymentMethod) && (
                 <p className="text-xs text-gray-400 text-center mt-2 flex items-center justify-center gap-1">
                   🔒 Secure payment via {gateways.find(g => g.gateway === paymentMethod)?.displayName}
                 </p>

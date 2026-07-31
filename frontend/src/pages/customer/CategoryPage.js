@@ -17,6 +17,7 @@ import API from '../../utils/api';
 import { useCart } from '../../context/CartContext';
 import { useTheme } from '../../context/ThemeContext';
 import useSEO from '../../hooks/useSEO';
+import InstallmentPlans from '../../components/InstallmentPlans';
 
 // Inject ItemList JSON-LD using only live catalogue records.
 function injectCategorySchemas(products, catName, canonicalUrl, aggregateRating) {
@@ -331,6 +332,7 @@ export default function CategoryPage() {
                       <div>
                         <span className="font-bold text-gray-900" style={{ fontFamily: 'var(--font-display)' }}>
                           {sym}{price?.toLocaleString()}
+                          <InstallmentPlans amount={price} />
                         </span>
                         {hasDiscount && (
                           <span className="text-xs text-gray-400 line-through ml-1">

@@ -527,10 +527,10 @@ const orderRateLimiter = rateLimit({
 });
 
 // Whitelist of allowed payment methods — reject anything not on this list
-const ALLOWED_PAYMENT_METHODS = ['free', 'cod', 'bank_transfer', 'payhere', 'stripe', 'paypal'];
+const ALLOWED_PAYMENT_METHODS = ['free', 'cod', 'bank_transfer', 'payhere', 'stripe', 'paypal', 'payzy'];
 
 // Allowed payment references per gateway — verified server-side before accepting
-const GATEWAY_METHODS = ['payhere', 'stripe', 'paypal'];
+const GATEWAY_METHODS = ['payhere', 'stripe', 'paypal', 'payzy'];
 
 router.post('/', orderRateLimiter, async (req, res) => {
   try {
@@ -856,7 +856,11 @@ router.post('/', orderRateLimiter, async (req, res) => {
 
     // ── WhatsApp admin alert: new order ─────────────────────────────────────────
     // Fire-and-forget — never delays or fails the order response.
-    sendOrderWhatsAppNotification(order).catch(err => console.error('[WHATSAPP ORDER ALERT]', err.message));
+    // Payzy orders are only drafts until the provider callback confirms them;
+    // do not send “new order” alerts for a payment that may still fail.
+    if (paymentMethod !== 'payzy') {
+      sendOrderWhatsAppNotification(order).catch(err => console.error('[WHATSAPP ORDER ALERT]', err.message));
+    }
 
     // ── Meta CAPI: server-side Purchase event ──────────────────────────────────
     // This mirrors the browser pixel Purchase event fired in the frontend.
@@ -881,7 +885,7 @@ router.post('/', orderRateLimiter, async (req, res) => {
     }).catch(err => console.error('[CAPI order]', err.message));
 
     // ── Email customer: order confirmation ─────────────────────────────────────
-    if (billing?.email) {
+    if (billing?.email && paymentMethod !== 'payzy') {
       if (await isEmailEnabled('order_placed_customer')) sendMail({
         to:      billing.email,
         subject: `Order Confirmed — ${order.orderNumber} | ShopZen`,
@@ -891,7 +895,7 @@ router.post('/', orderRateLimiter, async (req, res) => {
 
     // ── Email admin: new order alert ───────────────────────────────────────────
     const adminEmail = await getAdminEmail();
-    if (adminEmail) {
+    if (adminEmail && paymentMethod !== 'payzy') {
       if (await isEmailEnabled('order_placed_admin')) sendMail({
         to:      adminEmail,
         subject: `🛒 New Order ${order.orderNumber} — Rs. ${totals.total.toLocaleString()} | ShopZen`,
