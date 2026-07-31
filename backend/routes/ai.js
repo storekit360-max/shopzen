@@ -76,6 +76,10 @@ async function callOpenRouterWithWebSearch(prompt, maxTokens = 1600) {
           excluded_domains: ['reddit.com', 'facebook.com', 'instagram.com', 'tiktok.com'],
         },
       }],
+      // The web server tool is model-controlled. The web plugin is retained
+      // as a compatibility fallback so models that do not issue a tool call
+      // still receive search results and URL citations.
+      plugins: [{ id: 'web', max_results: 5, search_context_size: 'medium' }],
     }),
   });
   if (!response.ok) throw new Error(`OpenRouter web research error ${response.status}: ${await response.text()}`);
@@ -87,6 +91,7 @@ async function callOpenRouterWithWebSearch(prompt, maxTokens = 1600) {
   const annotations = [
     ...(Array.isArray(message.annotations) ? message.annotations : []),
     ...(Array.isArray(message.citations) ? message.citations.map(url => ({ type: 'url_citation', url })) : []),
+    ...(Array.isArray(message.content) ? message.content.flatMap(part => part?.annotations || part?.citations || []) : []),
   ];
   const sources = annotations
     .filter(annotation => annotation?.type === 'url_citation' && /^https:\/\//i.test(String(annotation.url || annotation.url_citation?.url || '')))
