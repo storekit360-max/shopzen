@@ -101,8 +101,22 @@ async function callOpenRouterWithWebSearch(prompt, maxTokens = 1600) {
     .filter((source, index, list) => list.findIndex(item => item.url === source.url) === index)
     .slice(0, 8);
   if (!text) throw new Error('OpenRouter web research returned no specification candidates.');
-  if (!sources.length) throw new Error('OpenRouter returned no web citations. Nothing was generated.');
-  return { text, sources };
+  // Some OpenRouter models return the requested sourceUrl/sourceTitle fields
+  // in the JSON body but omit message.annotations. Preserve those explicit
+  // URLs so the product editor can still show and require source verification.
+  if (!sources.length) {
+    const urls = [...text.matchAll(/https:\/\/[^\s"'<>\\]+/gi)]
+      .map(match => match[0].replace(/[),.]+$/, ''));
+    for (const sourceUrl of urls) {
+      let domain = '';
+      try { domain = new URL(sourceUrl).hostname.replace(/^www\./, ''); } catch {}
+      if (!sources.some(source => source.url === sourceUrl)) {
+        sources.push({ url: sourceUrl, title: domain || 'OpenRouter web source', domain });
+      }
+    }
+  }
+  if (!sources.length) throw new Error('OpenRouter returned no usable source URLs. Check that web search is enabled for the selected model.');
+  return { text, sources: sources.slice(0, 8) };
 }
 
 async function callAI(systemMsg, userMsg, maxTokens = 1000) {
