@@ -40,7 +40,7 @@ const GATEWAY_PRESETS = {
   payhere: { name: 'PayHere', logo: '💳', color: '#0066cc', fields: [{ key:'merchantId', label:'Merchant ID', type:'text' }, { key:'merchantSecret', label:'Merchant Secret', type:'password' }, { key:'appId', label:'App ID (optional)', type:'text' }, { key:'appSecret', label:'App Secret (optional)', type:'password' }] },
   stripe: { name: 'Stripe', logo: '💜', color: '#635bff', fields: [{ key:'publicKey', label:'Publishable Key', type:'text', hint:'pk_test_... or pk_live_...' }, { key:'secretKey', label:'Secret Key', type:'password', hint:'sk_test_... or sk_live_...' }, { key:'webhookSecret', label:'Webhook Secret', type:'password' }] },
   paypal: { name: 'PayPal', logo: '🅿️', color: '#003087', fields: [{ key:'clientId', label:'Client ID', type:'text' }, { key:'clientSecret', label:'Client Secret', type:'password' }] },
-  payzy: { name: 'Payzy', logo: '🟣', color: '#6d28d9', fields: [{ key:'shopId', label:'Shop ID', type:'text' }, { key:'secretKey', label:'Secret API Key', type:'password' }, { key:'companyName', label:'Company Name', type:'text' }, { key:'logoUrl', label:'Payzy Logo URL', type:'url', hint:'Public HTTPS URL for the official Payzy logo' }] },
+  payzy: { name: 'Payzy', logo: '🟣', color: '#6d28d9', fields: [{ key:'shopId', label:'Shop ID', type:'text' }, { key:'secretKey', label:'Secret API Key', type:'password' }, { key:'companyName', label:'Company Name', type:'text' }, { key:'logoUrl', label:'Payzy Logo (upload or URL)', type:'image', hint:'Upload the logo or paste a public HTTPS image URL. It will appear to customers.' }] },
   koko: { name: 'Koko', logo: '🟦', color: '#2563eb', fields: [{ key:'merchantId', label:'Merchant ID', type:'text' }, { key:'secretKey', label:'Secret Key', type:'password' }] },
 };
 
@@ -917,8 +917,16 @@ export default function AdminSettings() {
                             {preset.fields.map(field => (
                               <div key={field.key}>
                                 <label className="form-label text-xs">{field.label}</label>
-                                <input type={field.type} value={cfg[field.key]||''} onChange={e=>setGwConfigs(p=>({...p,[gwKey]:{...p[gwKey],[field.key]:e.target.value}}))}
-                                  className="form-input text-sm" placeholder={field.type==='password'?'••••••••':''}/>
+                                {field.type === 'image' ? (
+                                  <>
+                                    <ImageUpload value={cfg[field.key] || ''} onChange={url => setGwConfigs(p => ({ ...p, [gwKey]: { ...p[gwKey], [field.key]: url } }))} />
+                                    <input type="url" value={cfg[field.key] || ''} onChange={e => setGwConfigs(p => ({ ...p, [gwKey]: { ...p[gwKey], [field.key]: e.target.value } }))}
+                                      className="form-input text-sm mt-2" placeholder="https://example.com/payzy-logo.png" />
+                                  </>
+                                ) : (
+                                  <input type={field.type} value={cfg[field.key]||''} onChange={e=>setGwConfigs(p=>({...p,[gwKey]:{...p[gwKey],[field.key]:e.target.value}}))}
+                                    className="form-input text-sm" placeholder={field.type==='password'?'••••••••':''}/>
+                                )}
                                 {field.hint && <p className="text-xs text-gray-400 mt-0.5">{field.hint}</p>}
                               </div>
                             ))}
