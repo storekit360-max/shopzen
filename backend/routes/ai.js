@@ -49,15 +49,15 @@ async function callOpenRouter(systemMsg, userMsg, maxTokens = 1000) {
 function decryptSetting(value){try{const crypto=require('crypto');const [iv,tag,body]=String(value||'').split(':');const key=crypto.createHash('sha256').update(process.env.SOCIAL_MEDIA_SECRET||process.env.JWT_SECRET||'shopzen-settings-secret').digest();const d=crypto.createDecipheriv('aes-256-gcm',key,Buffer.from(iv,'hex'));d.setAuthTag(Buffer.from(tag,'hex'));return d.update(Buffer.from(body,'hex'))+d.final('utf8')}catch{return ''}}
 
 async function callOpenRouterWithWebSearch(prompt, maxTokens = 1600) {
-  if (!process.env.OPENROUTER_API_KEY) {
-    throw new Error('Source-backed specification research requires OPENROUTER_API_KEY.');
-  }
+  const row=await Settings.findOne({key:'openrouterApiKey'}).lean();
+  const apiKey=decryptSetting(row?.value)||process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error('Source-backed specification research requires an OpenRouter key configured in Admin Settings → AI.');
   const url = 'https://openrouter.ai/api/v1/chat/completions';
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'Authorization': `Bearer ${apiKey}`,
       'HTTP-Referer': process.env.FRONTEND_URL || 'https://shopzen.lk',
       'X-Title': 'ShopZen Product Specification Research',
     },
@@ -65,7 +65,7 @@ async function callOpenRouterWithWebSearch(prompt, maxTokens = 1600) {
       model: process.env.OPENROUTER_RESEARCH_MODEL || 'openrouter/auto',
       max_tokens: maxTokens,
       temperature: 0,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: 'user', content: `${prompt}\n\nYou must use the web search tool before answering. Return citations for every factual product specification.` }],
       tools: [{
         type: 'openrouter:web_search',
         parameters: {
