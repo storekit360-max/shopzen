@@ -146,10 +146,10 @@ const BannerForm = ({ form, setForm, onSave, onCancel, saving, type }) => {
         </div>
       )}
 
-      {/* Title always */}
+      {/* Title is optional; image/text-only banners are supported. */}
       <div>
-        <label className="form-label">Title {isRunning ? '(internal name)' : '*'}</label>
-        <input value={form.title} onChange={e => f('title', e.target.value)} className="form-input" placeholder="Banner name" />
+        <label className="form-label">Title <span className="text-gray-400 font-normal">(optional)</span></label>
+        <input value={form.title} onChange={e => f('title', e.target.value)} className="form-input" placeholder="Optional banner title" />
       </div>
 
       {!isRunning && (
