@@ -228,12 +228,19 @@ router.get('/admin/all', adminAuth, async (req, res) => {
     const { status, page = 1, limit = 20, search } = req.query;
     const filter = {};
     if (status && status !== 'all') filter.orderStatus = status;
+    // Payzy creates a temporary order record before redirecting to its hosted
+    // checkout. Do not expose unpaid Payzy drafts in the normal operational
+    // order list; they are not confirmed orders and must not be sent to a
+    // courier. Admins can inspect them explicitly when needed.
+    if (req.query.includePayzyDrafts !== 'true') {
+      filter.$and = [{ $or: [{ paymentMethod: { $ne: 'payzy' } }, { paymentStatus: 'paid' }] }];
+    }
     if (search)
-      filter.$or = [
+      filter.$and = [...(filter.$and || []), { $or: [
         { orderNumber: new RegExp(search, 'i') },
         { 'billing.email': new RegExp(search, 'i') },
         { 'billing.firstName': new RegExp(search, 'i') },
-      ];
+      ] }];
     const total = await Order.countDocuments(filter);
     const orders = await Order.find(filter)
       .populate('customer', 'firstName lastName email')
