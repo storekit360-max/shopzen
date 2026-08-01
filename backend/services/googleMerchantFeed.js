@@ -82,7 +82,7 @@ function buildGoogleMerchantFeed(products, siteUrl) {
     const link = slug && baseUrl ? `${baseUrl}/product/${encodeURIComponent(slug)}` : '';
     const images = [...new Set([product.thumbnail, ...(product.images || [])].map(clean).filter(Boolean))];
     const regularPrice = Number(product.price);
-    const candidateSalePrice = Number(product.salePrice);
+    const candidateSalePrice = Number(product.publicSalePrice || product.salePrice);
     const validSalePrice = Number.isFinite(candidateSalePrice) &&
       candidateSalePrice > 0 && candidateSalePrice < regularPrice;
 

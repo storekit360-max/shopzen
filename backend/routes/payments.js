@@ -107,6 +107,8 @@ router.post('/payzy/init', requireAuth, paymentInitLimiter, async (req,res) => {
       await Product.findByIdAndUpdate(item.product, { $inc: { stock: Number(item.quantity) || 0, soldCount: -(Number(item.quantity) || 0) } });
     }
     await require('../models/Order').findByIdAndDelete(order._id);
+    const { Notification } = require('../models/index');
+    await Notification.deleteMany({ 'data.orderId': order._id });
   };
   try {
     const { orderId } = req.body; order = await require('../models/Order').findById(orderId);

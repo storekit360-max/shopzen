@@ -845,14 +845,18 @@ router.post('/', orderRateLimiter, async (req, res) => {
       'metaEventId:', order.metaEventId || '(none)'
     );
 
-    // ── Admin in-app notification ──────────────────────────────────────────────
-    await Notification.create({
-      type:    'new_order',
-      title:   '🛒 New Order Received!',
-      message: `Order ${order.orderNumber} from ${billing.firstName} ${billing.lastName} — Rs. ${totals.total.toLocaleString()}`,
-      link:    `/admin/orders/${order._id}`,
-      data:    { orderId: order._id, total: totals.total, paymentMethod },
-    });
+    // Payzy orders are only drafts until Payzy confirms payment. Do not show
+    // a new-order notification for a draft, otherwise a failed provider
+    // redirect leaves a false notification after the order is rolled back.
+    if (paymentMethod !== 'payzy') {
+      await Notification.create({
+        type:    'new_order',
+        title:   '🛒 New Order Received!',
+        message: `Order ${order.orderNumber} from ${billing.firstName} ${billing.lastName} — Rs. ${totals.total.toLocaleString()}`,
+        link:    `/admin/orders/${order._id}`,
+        data:    { orderId: order._id, total: totals.total, paymentMethod },
+      });
+    }
 
     // ── WhatsApp admin alert: new order ─────────────────────────────────────────
     // Fire-and-forget — never delays or fails the order response.

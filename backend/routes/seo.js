@@ -20,7 +20,7 @@ const router   = express.Router();
 const fs       = require('fs');
 const path     = require('path');
 const Product          = require('../models/Product');
-const { Category, Settings, Review, BusinessPage, SeasonalCampaign } = require('../models/index');
+const { Category, Settings, Review, BusinessPage, SeasonalCampaign, Coupon } = require('../models/index');
 const { buildGoogleMerchantFeed } = require('../services/googleMerchantFeed');
 
 // ── XML helpers ───────────────────────────────────────────────────────────────
@@ -231,10 +231,13 @@ router.get('/product-sitemap.xml', (_req, res) => {
 // Google Merchant Center RSS feed, generated from the current MongoDB data.
 router.get('/google-merchant-feed.xml', async (_req, res) => {
   try {
-    const [siteUrl, products] = await Promise.all([
+    const [siteUrl, products, coupons] = await Promise.all([
       getSiteUrl(),
       Product.find({ isActive: true }).populate('category', 'name').lean(),
+      Coupon.find({ isActive: true }).lean(),
     ]);
+    const { publicGooglePrice } = require('../services/publicGooglePricing');
+    products.forEach(product => Object.assign(product, publicGooglePrice(product, coupons)));
     const { xml, etag, diagnostics } = buildGoogleMerchantFeed(products, siteUrl);
 
     if (process.env.NODE_ENV !== 'production') {
@@ -403,6 +406,12 @@ Disallow: /forgot-password
 Disallow: /my-orders
 Disallow: /returns
 Disallow: /*?*sort=
+Disallow: /*?*search=
+Disallow: /*?*filter=
+Disallow: /*?*category=
+Disallow: /*?*brand=
+Disallow: /*?*coupon=
+Disallow: /*?*ref=
 
 # Allow paginated product/category/brand pages for crawling
 Allow: /shop?page=
@@ -693,9 +702,13 @@ router.get('/product-meta/:slug', async (req, res) => {
 
     const plainDesc  = String(product.shortDescription || product.description || '')
       .replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-    const priceText  = hasValidSalePrice(product)
-      ? `Rs.${product.salePrice.toLocaleString()} (was Rs.${product.price.toLocaleString()})`
-      : `Rs.${product.price.toLocaleString()}`;
+    const { publicGooglePrice } = require('../services/publicGooglePricing');
+    const publicCoupons = await Coupon.find({ isActive: true }).lean();
+    const googlePrice = publicGooglePrice(product, publicCoupons);
+    const displayPrice = googlePrice.publicSalePrice || googlePrice.price;
+    const priceText  = displayPrice < Number(product.price)
+      ? `Rs.${displayPrice.toLocaleString()} (was Rs.${product.price.toLocaleString()})`
+      : `Rs.${displayPrice.toLocaleString()}`;
     const catName    = product.category?.name || '';
     const _raw1      = (plainDesc.split('.')[0] || plainDesc).trim();
     const baseDesc   = _raw1.length <= 85 ? _raw1 : _raw1.slice(0, _raw1.lastIndexOf(' ', 85));
@@ -721,7 +734,7 @@ router.get('/product-meta/:slug', async (req, res) => {
       '@type':           'Offer',
       url:               productUrl,
       priceCurrency:     'LKR',
-      price:             String(getEffectiveProductPrice(product)),
+      price:             String(displayPrice),
       ...(hasValidSalePrice(product) && product.saleEndsAt ? {
         priceValidUntil: new Date(product.saleEndsAt).toISOString().split('T')[0],
       } : {}),
@@ -732,10 +745,10 @@ router.get('/product-meta/:slug', async (req, res) => {
       seller: { '@type': 'Organization', name: storeName },
     };
 
-    if (hasValidSalePrice(product)) {
+    if (displayPrice < Number(product.price)) {
       offers.priceSpecification = {
         '@type': 'PriceSpecification',
-        price: product.salePrice,
+        price: displayPrice,
         priceCurrency: 'LKR',
       };
     }
@@ -803,7 +816,7 @@ router.get('/product-meta/:slug', async (req, res) => {
       productUrl,
       schema, breadcrumbSchema, orgSchema,
       price:        product.price,
-      salePrice:    hasValidSalePrice(product) ? product.salePrice : null,
+      salePrice:    displayPrice < Number(product.price) ? displayPrice : null,
       availability: product.stock > 0 ? 'InStock' : 'OutOfStock',
       brand:        product.brand,
       category:     catName,
@@ -1275,10 +1288,14 @@ const seoRenderMiddleware = async (req, res) => {
         .populate('category', 'name slug').lean();
 
       if (product) {
+        const { publicGooglePrice } = require('../services/publicGooglePricing');
+        const publicCoupons = await Coupon.find({ isActive: true }).lean();
+        const googlePrice = publicGooglePrice(product, publicCoupons);
+        const displayPrice = googlePrice.publicSalePrice || googlePrice.price;
         const productUrl   = `${siteUrl}/product/${product.slug}`;
         const metaTitle    = buildProductTitle(product, storeName);
         const plainDesc    = String(product.shortDescription || product.description || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-        const priceText    = hasValidSalePrice(product) ? `Rs.${product.salePrice.toLocaleString()} (was Rs.${product.price.toLocaleString()})` : `Rs.${product.price.toLocaleString()}`;
+        const priceText    = displayPrice < Number(product.price) ? `Rs.${displayPrice.toLocaleString()} (was Rs.${product.price.toLocaleString()})` : `Rs.${displayPrice.toLocaleString()}`;
         const _raw         = (plainDesc.split('.')[0] || plainDesc).trim();
         const baseDesc     = _raw.length <= 85 ? _raw : _raw.slice(0, _raw.lastIndexOf(' ', 85));
         const metaDesc     = `${baseDesc || product.name}. ${priceText}. Fast delivery across Sri Lanka. Shop at ${storeName}.`.slice(0, 165);
@@ -1303,7 +1320,7 @@ const seoRenderMiddleware = async (req, res) => {
           ...(product.brand ? { brand: { '@type': 'Brand', name: product.brand } } : {}),
           offers: {
             '@type': 'Offer', url: productUrl, priceCurrency: 'LKR',
-            price: String(getEffectiveProductPrice(product)),
+            price: String(displayPrice),
             ...(hasValidSalePrice(product) && product.saleEndsAt ? {
               priceValidUntil: new Date(product.saleEndsAt).toISOString().split('T')[0],
             } : {}),
