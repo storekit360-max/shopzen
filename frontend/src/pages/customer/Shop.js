@@ -369,7 +369,7 @@ export default function Shop() {
                             <div className="min-w-0">
                               <span className="font-black text-sm sm:text-base text-gray-900 leading-tight" style={{fontFamily:'var(--font-display)'}}>{sym} {price?.toLocaleString()}</span>
                               {isOnSale && <span className="text-xs text-gray-400 line-through ml-1 block sm:inline">{sym} {product.price?.toLocaleString()}</span>}
-                              <InstallmentPlans amount={price} />
+                              <InstallmentPlans amount={price} productId={product?._id} />
                             </div>
                             {hasVars ? (
                               <Link to={`/product/${product.slug}`} className="flex-shrink-0 text-xs px-3 py-1.5 rounded-xl font-bold text-white" style={{background:'var(--theme-gradient)'}}>Select</Link>

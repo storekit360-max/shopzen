@@ -176,7 +176,7 @@ const ProductCard = ({ product, settings }) => {
             </button>
           )}
         </div>
-        <InstallmentPlans amount={price} />
+        <InstallmentPlans amount={price} productId={product?._id} />
       </div>
     </article>
   );

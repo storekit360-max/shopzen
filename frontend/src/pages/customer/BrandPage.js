@@ -336,7 +336,7 @@ export default function BrandPage() {
                       <div>
                         <span className="font-bold text-gray-900" style={{ fontFamily: 'var(--font-display)' }}>
                           {sym}{price?.toLocaleString()}
-                          <InstallmentPlans amount={price} />
+                          <InstallmentPlans amount={price} productId={product?._id} />
                         </span>
                         {hasDiscount && (
                           <span className="text-xs text-gray-400 line-through ml-1">
