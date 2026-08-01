@@ -795,6 +795,7 @@ export default function ProductDetail() {
                     {p.isOnSale && p.salePrice && (
                       <p className="text-xs text-gray-400 line-through">{sym} {p.price?.toLocaleString()}</p>
                     )}
+                    <InstallmentPlans amount={p.salePrice > 0 && p.salePrice < p.price ? p.salePrice : p.price} compact />
                   </div>
                 </div>
               ))}
