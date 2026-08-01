@@ -1207,10 +1207,15 @@ export default function Checkout() {
                 <div className="field-full sm:col-span-2">
                   <label className="form-label">Town / City <span className="text-red-500">*</span></label>
                   {billing.country === 'Sri Lanka' ? (
-                    <select value={billing.city} onChange={e => setBilling(p => ({ ...p, city: e.target.value }))} required className="form-input">
-                      <option value="">Select city…</option>
-                      {SL_CITIES.map(d => <option key={d}>{d}</option>)}
-                    </select>
+                    <>
+                      <input list="shopzen-sri-lanka-cities" value={billing.city}
+                        onChange={e => setBilling(p => ({ ...p, city: e.target.value }))}
+                        required className="form-input" placeholder="Select or type your city (e.g. Dayagama)" />
+                      <datalist id="shopzen-sri-lanka-cities">
+                        {SL_CITIES.map(d => <option key={d} value={d} />)}
+                      </datalist>
+                      <p className="text-xs text-gray-400 mt-1">If your city is not listed, type it manually.</p>
+                    </>
                   ) : (
                     <input value={billing.city} onChange={e => setBilling(p => ({ ...p, city: e.target.value }))} required className="form-input" placeholder="Your city" />
                   )}
