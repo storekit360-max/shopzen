@@ -218,6 +218,35 @@ const runAutoCancelDecisions = async () => {
 setInterval(runAutoCancelDecisions, 60 * 1000);
 setTimeout(runAutoCancelDecisions, 5000);
 
+// Payzy orders are payment drafts until the provider callback confirms them.
+// Release their reserved stock after one hour if the customer abandons or
+// fails checkout. The atomic status update prevents two server instances from
+// restoring the same stock reservation twice.
+const expireUnpaidPayzyDrafts = async () => {
+  try {
+    const cutoff = new Date(Date.now() - 60 * 60 * 1000);
+    const drafts = await Order.find({ paymentMethod: 'payzy', paymentStatus: 'pending', createdAt: { $lte: cutoff } }).limit(100);
+    for (const draft of drafts) {
+      const claimed = await Order.findOneAndUpdate(
+        { _id: draft._id, paymentMethod: 'payzy', paymentStatus: 'pending' },
+        { $set: { paymentStatus: 'failed', orderStatus: 'cancelled', 'paymentMetadata.payzyExpiredAt': new Date() }, $push: { statusHistory: { status: 'cancelled', note: 'Payzy payment was not completed within one hour; stock was released automatically.', updatedBy: 'system' } } },
+        { new: true }
+      );
+      if (!claimed) continue;
+      for (const item of claimed.items || []) {
+        await Product.findByIdAndUpdate(item.product, { $inc: { stock: Number(item.quantity) || 0, soldCount: -(Number(item.quantity) || 0) } }).catch(() => {});
+      }
+      await Order.deleteOne({ _id: claimed._id });
+      console.log(`[PAYZY EXPIRY] ${claimed.orderNumber} expired after one hour; stock restored`);
+    }
+  } catch (err) {
+    console.error('[PAYZY EXPIRY] Scheduler error:', err.message);
+  }
+};
+
+setInterval(expireUnpaidPayzyDrafts, 60 * 1000);
+setTimeout(expireUnpaidPayzyDrafts, 10000);
+
 // Follow-up reminder scheduler removed. The business no longer uses follow-up workflows,
 // so the backend no longer runs periodic follow-up scans or creates related notifications.
 

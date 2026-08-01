@@ -133,7 +133,42 @@ router.post('/payzy/init', requireAuth, paymentInitLimiter, async (req,res) => {
   } catch(e){console.error('[Payzy init]',{endpoint:upstreamEndpoint,error:e.message}); try { await rollbackOrder(); } catch (rollbackError) { console.error('[Payzy rollback]', rollbackError.message); } res.status(502).json({message:`Could not connect to Payzy${upstreamEndpoint ? ` (${upstreamEndpoint})` : ''}. The order was cancelled.`});}
 });
 router.post('/payzy/abort', requireAuth, async (req,res) => { try { const Order=require('../models/Order'); const Product=require('../models/Product'); const order=await Order.findOne({_id:req.body.orderId,customer:req.user.id,paymentMethod:'payzy',paymentStatus:'pending'}); if(order){for(const item of order.items||[]) await Product.findByIdAndUpdate(item.product,{$inc:{stock:Number(item.quantity)||0,soldCount:-(Number(item.quantity)||0)}}); await Order.deleteOne({_id:order._id});} res.json({success:true}); } catch(e){res.status(500).json({message:'Could not cancel Payzy draft order'});} });
-router.get('/payzy/response', async (req,res) => { try { const Order=require('../models/Order'); const order=await Order.findOne({orderNumber:req.query.x_order_id,paymentMethod:'payzy'}); const gw=await PaymentGateway.findOne({gateway:'payzy'}); const ok=order&&gw?.config?.secretKey&&String(req.query.response_code)==='00'&&safeEqual(payzySignature(order.paymentMetadata||orderToPayzy(order,req),gw.config.secretKey,req.query.response_code),String(req.query.signature||'').replace(/ /g,'+')); if(ok){order.paymentStatus='paid';order.orderStatus='confirmed';order.paymentReference=String(req.query.x_order_id);order.statusHistory.push({status:'confirmed',note:'Payment confirmed via Payzy',updatedBy:'payzy'});await order.save();} res.redirect(`${process.env.PUBLIC_APP_URL||process.env.FRONTEND_URL||'https://shopzen.lk'}/my-orders?new=${order?._id||''}&payment=payzy&status=${ok?'success':'failed'}`);}catch(e){res.redirect(`${process.env.PUBLIC_APP_URL||process.env.FRONTEND_URL||'https://shopzen.lk'}/checkout?payment=failed`);} });
+async function handlePayzyResponse(req, res) {
+  const params = { ...(req.query || {}), ...(req.body || {}) };
+  const frontendUrl = (process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || 'https://shopzen.lk').replace(/\/$/, '');
+  try {
+    const Order = require('../models/Order');
+    const order = await Order.findOne({ orderNumber: params.x_order_id, paymentMethod: 'payzy' });
+    const gw = await PaymentGateway.findOne({ gateway: 'payzy' });
+    const suppliedSignature = String(params.signature || '').replace(/ /g, '+');
+    const signedData = order?.paymentMetadata || (order ? orderToPayzy(order, params) : params);
+    const valid = Boolean(order && gw?.config?.secretKey && String(params.response_code) === '00' && suppliedSignature && safeEqual(
+      payzySignature(signedData, gw.config.secretKey, params.response_code), suppliedSignature
+    ));
+
+    let confirmed = false;
+    if (valid) {
+      // Idempotent transition: repeated Payzy redirects cannot duplicate the
+      // payment reference or status history.
+      const updated = await Order.findOneAndUpdate(
+        { _id: order._id, paymentMethod: 'payzy', paymentStatus: { $ne: 'paid' } },
+        { $set: { paymentStatus: 'paid', orderStatus: 'confirmed', paymentReference: String(params.x_order_id) }, $push: { statusHistory: { status: 'confirmed', note: 'Payment confirmed via Payzy', updatedBy: 'payzy' } } },
+        { new: true }
+      );
+      confirmed = Boolean(updated) || order.paymentStatus === 'paid';
+      console.log(`[PAYZY CALLBACK] ${order.orderNumber} signature verified; order ${confirmed ? 'confirmed' : 'already confirmed'}`);
+    } else {
+      console.error('[PAYZY CALLBACK] Verification failed', { orderId: params.x_order_id, responseCode: params.response_code, hasSignature: Boolean(suppliedSignature) });
+    }
+
+    return res.redirect(`${frontendUrl}/my-orders?new=${order?._id || ''}&payment=payzy&status=${confirmed ? 'success' : 'failed'}`);
+  } catch (error) {
+    console.error('[PAYZY CALLBACK]', error.message);
+    return res.redirect(`${frontendUrl}/checkout?payment=failed`);
+  }
+}
+router.get('/payzy/response', handlePayzyResponse);
+router.post('/payzy/response', handlePayzyResponse);
 function orderToPayzy(order,q){const b=order.billing||{},s=order.shipping||b;return {x_test_mode:q.x_test_mode||'off',x_shopid:q.x_shopid||'',x_amount:Number(order.total).toFixed(2),x_order_id:order.orderNumber,x_response_url:q.x_response_url||'',x_first_name:b.firstName,x_last_name:b.lastName,x_company:'ShopZen',x_address:b.street,x_country:b.country,x_state:'',x_city:b.city,x_zip:'',x_phone:b.phone,x_email:b.email,x_ship_to_first_name:s.firstName,x_ship_to_last_name:s.lastName,x_ship_to_company:'ShopZen',x_ship_to_address:s.street,x_ship_to_country:s.country,x_ship_to_state:'',x_ship_to_city:s.city,x_ship_to_zip:'',x_freight:Number(order.shippingCost||0).toFixed(2),x_platform:'custom',x_version:'1.0',signed_field_names:PAYZY_FIELDS.join(',')};}
 
 // ── Admin: get all gateways with full config ──────────────────────────────────
