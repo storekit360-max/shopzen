@@ -581,7 +581,7 @@ export default function ProductDetail() {
               </>
             )}
           </div>
-          <InstallmentPlans amount={curPrice} />
+          <InstallmentPlans amount={curPrice} productId={product?._id} />
           {getPriceModifier() !== 0 && (
             <p className="text-xs text-gray-400">Base {sym} {basePrice?.toLocaleString()} + {sym} {getPriceModifier()} variant</p>
           )}
@@ -795,7 +795,7 @@ export default function ProductDetail() {
                     {p.isOnSale && p.salePrice && (
                       <p className="text-xs text-gray-400 line-through">{sym} {p.price?.toLocaleString()}</p>
                     )}
-                    <InstallmentPlans amount={p.salePrice > 0 && p.salePrice < p.price ? p.salePrice : p.price} compact />
+                    <InstallmentPlans amount={p.salePrice > 0 && p.salePrice < p.price ? p.salePrice : p.price} productId={p._id} compact />
                   </div>
                 </div>
               ))}
@@ -846,7 +846,7 @@ export default function ProductDetail() {
                   {p.isOnSale && p.salePrice && (
                     <p className="text-xs text-gray-400 line-through">{sym} {p.price?.toLocaleString()}</p>
                   )}
-                  <InstallmentPlans amount={p.salePrice > 0 && p.salePrice < p.price ? p.salePrice : p.price} compact />
+                  <InstallmentPlans amount={p.salePrice > 0 && p.salePrice < p.price ? p.salePrice : p.price} productId={p._id} compact />
                 </div>
               </div>
             ))}
@@ -884,7 +884,7 @@ export default function ProductDetail() {
                   {p.isOnSale && p.salePrice && (
                     <p className="text-xs text-gray-400 line-through">{sym} {p.price?.toLocaleString()}</p>
                   )}
-                  <InstallmentPlans amount={p.salePrice > 0 && p.salePrice < p.price ? p.salePrice : p.price} compact />
+                  <InstallmentPlans amount={p.salePrice > 0 && p.salePrice < p.price ? p.salePrice : p.price} productId={p._id} compact />
                 </div>
               </div>
             ))}
@@ -950,7 +950,7 @@ export default function ProductDetail() {
                   <p className="font-black mt-1.5 text-base" style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-display)' }}>
                     {sym} {(p.salePrice || p.price)?.toLocaleString()}
                   </p>
-                  <InstallmentPlans amount={p.salePrice > 0 && p.salePrice < p.price ? p.salePrice : p.price} compact />
+                  <InstallmentPlans amount={p.salePrice > 0 && p.salePrice < p.price ? p.salePrice : p.price} productId={p._id} compact />
                 </div>
               </div>
             ))}

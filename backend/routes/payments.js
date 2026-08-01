@@ -88,6 +88,32 @@ router.get('/gateways', async (req, res) => {
   }
 });
 
+// Public installment quote for a product. Uses the same public coupon rules
+// as the Google feed, then lets the client display each configured plan using
+//: (discounted product price × (1 + interest%)) ÷ months.
+router.get('/installment-quote/:productId', async (req, res) => {
+  try {
+    const Product = require('../models/Product');
+    const { Coupon } = require('../models/index');
+    const { publicGooglePrice } = require('../services/publicGooglePricing');
+    if (!require('mongoose').isValidObjectId(req.params.productId)) return res.status(400).json({ message: 'Invalid product' });
+    const product = await Product.findOne({ _id: req.params.productId, isActive: true }).populate('category', '_id').lean();
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+    const [coupons, gateways] = await Promise.all([
+      Coupon.find({ isActive: true }).lean(),
+      PaymentGateway.find({ isEnabled: true }).lean(),
+    ]);
+    const quote = publicGooglePrice(product, coupons);
+    const plans = gateways.flatMap(g => (g.config?.installmentPlans || [])
+      .filter(p => p.active !== false)
+      .map(p => ({ ...(p.toObject ? p.toObject() : p), provider: p.provider || g.gateway, providerLogo: p.providerLogo || g.config?.logoUrl || g.logo || null })));
+    res.json({ amount: quote.publicSalePrice || quote.price, originalAmount: quote.price, discounted: Boolean(quote.publicSalePrice), plans });
+  } catch (err) {
+    console.error('[installment quote]', err.message);
+    res.status(500).json({ message: 'Could not calculate installment quote' });
+  }
+});
+
 // Payzy uses a signed server-to-server initiation and callback verification.
 const PAYZY_FIELDS = ['x_test_mode','x_shopid','x_amount','x_order_id','x_response_url','x_first_name','x_last_name','x_company','x_address','x_country','x_state','x_city','x_zip','x_phone','x_email','x_ship_to_first_name','x_ship_to_last_name','x_ship_to_company','x_ship_to_address','x_ship_to_country','x_ship_to_state','x_ship_to_city','x_ship_to_zip','x_freight','x_platform','x_version','signed_field_names'];
 const payzyValue = v => String(v ?? '').replace(/[\r\n]/g, ' ').trim();
