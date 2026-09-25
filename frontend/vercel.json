@@ -100,6 +100,14 @@
       "destination": "https://shopzen-production.up.railway.app/api/seo/robots.txt"
     },
     {
+      "source": "/ads.txt",
+      "destination": "https://shopzen-production.up.railway.app/api/seo/ads.txt"
+    },
+    {
+      "source": "/api/seo/meta",
+      "destination": "https://shopzen-production.up.railway.app/api/seo/meta"
+    },
+    {
       "source": "/page/:slug",
       "destination": "https://shopzen-production.up.railway.app/page/:slug"
     },

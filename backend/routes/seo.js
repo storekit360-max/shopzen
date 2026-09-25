@@ -470,6 +470,7 @@ router.get('/meta', async (req, res) => {
           'seo_config', 'seo_metaTitle', 'seo_metaDesc', 'seo_ogTitle',
           'seo_ogDesc', 'seo_ogImage', 'seo_googleVerification',
           'seo_ga4Id', 'seo_gtmId', 'seo_fbPixelId',
+          'adsense_publisherId', 'adsense_verificationMethod', 'adsense_adsTxtExtra',
           'storeName', 'storeTagline', 'logoUrl', 'faviconUrl',
         ],
       },
@@ -499,10 +500,30 @@ router.get('/meta', async (req, res) => {
       ga4Id:              s.seo_ga4Id    || '',
       gtmId:              s.seo_gtmId    || '',
       fbPixelId:          s.seo_fbPixelId || '',
+      adsensePublisherId: String(s.adsense_publisherId || '').replace(/^ca-/, ''),
+      adsenseVerificationMethod: s.adsense_verificationMethod || 'meta',
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
+});
+
+// AdSense requires ads.txt at the site root. Generate the standard Google
+// seller declaration from the publisher ID saved in the admin SEO panel.
+router.get('/ads.txt', async (_req, res) => {
+  try {
+    const rows = await Settings.find({ key: { $in: ['adsense_publisherId', 'adsense_adsTxtExtra'] } }).lean();
+    const values = Object.fromEntries(rows.map(row => [row.key, row.value]));
+    const publisherId = String(values.adsense_publisherId || '').trim().replace(/^ca-/, '');
+    const lines = [];
+    if (/^pub-\d{16}$/.test(publisherId)) lines.push(`google.com, ${publisherId}, DIRECT, f08c47fec0942fa0`);
+    if (typeof values.adsense_adsTxtExtra === 'string') {
+      lines.push(...values.adsense_adsTxtExtra.split(/\r?\n/).map(line => line.trim()).filter(line => line && !/^google\.com,\s*pub-\d{16},/.test(line)));
+    }
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=1800');
+    return res.send(lines.length ? `${lines.join('\n')}\n` : '# Add your AdSense publisher ID in Admin → SEO → Tools & Analytics.\n');
+  } catch (err) { return res.status(500).type('text/plain').send('Unable to generate ads.txt'); }
 });
 
 // ── FAQ Schema Builder ───────────────────────────────────────────────────────

@@ -206,6 +206,7 @@ app.use('/api/admin/marketing', auditLog, require('./routes/marketingAdmin'));
 // ─── SEO aliases ──────────────────────────────────────────────────────────────
 app.get('/sitemap.xml', (req, res) => res.redirect(301, '/api/seo/sitemap.xml'));
 app.get('/robots.txt',  (req, res) => res.redirect(301, '/api/seo/robots.txt'));
+app.get('/ads.txt',     (req, res) => res.redirect(302, '/api/seo/ads.txt'));
 app.get('/product-sitemap.xml', (req, res) => res.redirect(301, '/api/seo/product-sitemap.xml'));
 app.get('/google-merchant-feed.xml', (req, res) => res.redirect(301, '/api/seo/google-merchant-feed.xml'));
 

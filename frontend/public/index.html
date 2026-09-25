@@ -1,6 +1,24 @@
 <!DOCTYPE html>
 <html lang="en-LK">
   <head>
+    <!-- AdSense verification and library bootstrap. Publisher ID is managed in Admin → SEO → Tools & Analytics. -->
+    <script>
+      (function(){
+        if (/^\/admin(?:\/|$)/.test(location.pathname)) return;
+        fetch('/api/seo/meta').then(function(r){return r.ok?r.json():null;}).then(function(cfg){
+          if (!cfg || !/^pub-\d{16}$/.test(cfg.adsensePublisherId || '')) return;
+          var publisher = 'ca-' + cfg.adsensePublisherId;
+          if (cfg.adsenseVerificationMethod === 'meta') {
+            var meta = document.createElement('meta'); meta.name = 'google-adsense-account'; meta.content = publisher; document.head.appendChild(meta);
+          }
+          if (!document.querySelector('script[data-shopzen-adsense]')) {
+            var script = document.createElement('script'); script.async = true; script.dataset.shopzenAdsense = 'true';
+            script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + publisher;
+            script.crossOrigin = 'anonymous'; document.head.appendChild(script);
+          }
+        }).catch(function(){});
+      })();
+    </script>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,viewport-fit=cover"/>
     <!-- Core Web Vitals: preconnect to CDN origins used for images -->

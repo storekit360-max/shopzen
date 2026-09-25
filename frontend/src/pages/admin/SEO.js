@@ -638,6 +638,43 @@ ${urls.map(u => `  <url>
             </div>
           </div>
 
+          {/* Google AdSense */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 bg-green-50">💰</div>
+              <div>
+                <h3 className="font-bold text-gray-900">Google AdSense</h3>
+                <p className="text-sm text-gray-400">Verify your site and load AdSense on public storefront pages</p>
+                {settings.adsense_publisherId ? <span className="inline-flex text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full mt-1">✓ Publisher ID configured</span> : <span className="inline-flex text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full mt-1">Not configured</span>}
+              </div>
+            </div>
+            <div className="space-y-4">
+              <Field label="AdSense Publisher ID" value={settings.adsense_publisherId} onChange={e => setSettings(p => ({ ...p, adsense_publisherId: e.target.value.trim() }))} placeholder="pub-0123456789012345 or ca-pub-0123456789012345" hint="Find this in AdSense → Account → Account information. You can paste the ID with or without the ca- prefix." />
+              <div>
+                <label className="form-label">Site verification method</label>
+                <select value={settings.adsense_verificationMethod || 'meta'} onChange={e => setSettings(p => ({ ...p, adsense_verificationMethod: e.target.value }))} className="form-input">
+                  <option value="meta">Meta tag</option>
+                  <option value="snippet">AdSense code snippet</option>
+                  <option value="ads_txt">Ads.txt</option>
+                </select>
+                <p className="text-xs text-gray-400 mt-1">Choose the method selected in AdSense. The AdSense library is loaded on public storefront pages for ad serving; ads.txt is published at the site root.</p>
+              </div>
+              {settings.adsense_publisherId && (
+                <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                  <p className="text-xs font-bold text-gray-500 uppercase">Generated site files</p>
+                  <p className="text-xs text-gray-600">Verification is added to the storefront head automatically. Your seller declaration is published at:</p>
+                  <a href={`${window.location.origin}/ads.txt`} target="_blank" rel="noreferrer" className="text-sm font-semibold text-blue-600 hover:underline">{window.location.origin}/ads.txt</a>
+                  <code className="block text-xs text-gray-700 font-mono break-all">google.com, {String(settings.adsense_publisherId).replace(/^ca-/, '')}, DIRECT, f08c47fec0942fa0</code>
+                  <p className="text-xs text-gray-500">If AdSense gave you additional seller lines, put each complete line below. Google may take time to crawl updates.</p>
+                  <textarea value={settings.adsense_adsTxtExtra || ''} onChange={e => setSettings(p => ({ ...p, adsense_adsTxtExtra: e.target.value }))} rows={3} className="form-input resize-y font-mono text-xs" placeholder="Additional ads.txt lines, one per line (optional)" />
+                </div>
+              )}
+              <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-xs text-amber-800">
+                Add the site to your AdSense account first, then save its publisher ID here. Complete AdSense approval and create ad units in AdSense; this connects verification and the ads.txt seller declaration but does not create ad placements.
+              </div>
+            </div>
+          </div>
+
           {/* Facebook Pixel */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
             <div className="flex items-start gap-4 mb-4">
